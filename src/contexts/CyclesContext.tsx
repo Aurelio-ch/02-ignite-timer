@@ -32,14 +32,48 @@ interface CycleContextProviderProps {
   children: ReactNode
 }
 
+interface CycleState {
+  cycles: Cycle[]
+  activeCycleId: string | null
+}
+
 export function CyclesContextProvider({ children }: CycleContextProviderProps) {
-  const [cycles, dispatch] = useReducer((state: Cycle[], action: any) => {
+  const [cyclesState, dispatch] = useReducer((state: CycleState, action: any) => {
     if (action.type === 'ADD_NEW_CYCLE') {
-      return [...state, action.payload.newCycle]
+      return {
+        ...state,
+        cycles: [...state.cycles, action.payload.newCycle],
+        activeCycleId: action.payload.newCycle.id,
+      }
     }
+    if (action.type === 'INTERRUPT_CURRENT_CYCLE'){
+      return {
+        ...state,
+        cycles: state.cycles.map((cycle) => {
+          if (cycle.id === state.activeCycleId) {
+            return { ...cycle, interruptedDate: new Date() }
+          } else {
+            return cycle
+          }
+        }),
+        activeCycleId: null,
+      }
+    }
+
+    if (action.type === 'ACTIVE_CYCLE_ID_RESET') {
+      return { ...state, activeCycleId: null}
+    }
+
     return state
-  }, [])
-  const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  },
+  {
+    cycles: [],
+    activeCycleId: null,
+  },
+)
+
+
+  const { cycles, activeCycleId } = cyclesState
   const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
@@ -65,7 +99,12 @@ export function CyclesContextProvider({ children }: CycleContextProviderProps) {
     // )
   }
   function activeCycleIdReset() {
-    setActiveCycleId(null)
+    dispatch({
+      type: 'ACTIVE_CYCLE_ID_RESET',
+      payload: {
+      activeCycleId,      
+      },
+    })
   }
 
   function createNewCycle(data: CreateCycleData) {
@@ -84,10 +123,7 @@ export function CyclesContextProvider({ children }: CycleContextProviderProps) {
       newCycle,      
       },
     })
-    // setCycles((state) => [...state, newCycle])
-    setActiveCycleId(id)
     setAmountSecondsPassed(0)
-    // reset()
   }
 
   function interruptCurrentCycle() {
@@ -97,17 +133,6 @@ export function CyclesContextProvider({ children }: CycleContextProviderProps) {
       activeCycleId,      
       },
     })
-
-    // setCycles((state) =>
-    //   state.map((cycle) => {
-    //     if (cycle.id === activeCycleId) {
-    //       return { ...cycle, interruptedDate: new Date() }
-    //     } else {
-    //       return cycle
-    //     }
-    //   }),
-    // )
-    setActiveCycleId(null)
     document.title = 'Ignite Timer'
   }
   return (
